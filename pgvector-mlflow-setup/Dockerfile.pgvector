@@ -1,0 +1,7 @@
+# Custom pgvector image with the course init script baked in.
+# Postgres runs everything in /docker-entrypoint-initdb.d on first DB init,
+# so baking the SQL into the image avoids mounting a host folder (which
+# `podman play kube` does not resolve reliably from relative paths).
+FROM pgvector/pgvector:pg18-trixie
+
+COPY initdb/pgvector-mlflow-setup.sql /docker-entrypoint-initdb.d/

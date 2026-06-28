@@ -1,0 +1,13 @@
+FROM ghcr.io/mlflow/mlflow
+
+RUN pip install --no-cache-dir psycopg2-binary
+
+EXPOSE 5000
+
+ENV MLFLOW_BACKEND_STORE_URI="postgresql://mlflow_user:pass%40word1%21%40%23%24%25%5E@host.containers.internal:5432/mlflow"
+
+CMD mlflow server \
+    --host 0.0.0.0 \
+    --port 5000 \
+    --backend-store-uri "$MLFLOW_BACKEND_STORE_URI" \
+    --default-artifact-root /mlflow/artifacts

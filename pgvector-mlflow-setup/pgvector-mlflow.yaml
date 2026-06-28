@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pgvector-pod
+spec:
+  containers:
+    # 1. pgvector starts first and provides the PostgreSQL backend.
+    #    Uses the custom image built from Dockerfile.pgvector, which bakes the
+    #    initdb SQL into /docker-entrypoint-initdb.d (run on first DB init).
+    - name: pgvector
+      image: localhost/postgres-vector:latest
+      ports:
+        - containerPort: 5432
+          hostPort: 5432
+      env:
+        - name: POSTGRES_USER
+          value: langchain
+        - name: POSTGRES_PASSWORD
+          value: langchain!
+        - name: POSTGRES_DB
+          value: langchain_db
+      volumeMounts:
+        - mountPath: /var/lib/postgresql
+          name: pgdata
+
+    # 2. mlflow-postgres shares the pod network, so it reaches pgvector on
+    #    localhost:5432. The command blocks until the mlflow_db database is
+    #    accepting connections, ensuring pgvector is ready first.
+    - name: mlflow
+      image: localhost/mlflow-postgres:latest
+      ports:
+        - containerPort: 5000
+          hostPort: 5000
+      env:
+        - name: MLFLOW_BACKEND_STORE_URI
+          value: postgresql://mlflow:mlflow%21@localhost:5432/mlflow_db
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for pgvector (mlflow_db) to be ready...";
+          until python -c "import psycopg2; psycopg2.connect('host=localhost port=5432 dbname=mlflow_db user=mlflow password=mlflow!')" 2>/dev/null; do
+            echo "  pgvector not ready yet, retrying in 2s...";
+            sleep 2;
+          done;
+          echo "pgvector is ready. Starting MLflow server.";
+          exec mlflow server \
+            --host 0.0.0.0 \
+            --port 5000 \
+            --backend-store-uri "$MLFLOW_BACKEND_STORE_URI" \
+            --default-artifact-root /mlflow/artifacts
+      volumeMounts:
+        - mountPath: /mlflow/artifacts
+          name: mlflow-artifacts
+
+  volumes:
+    # Named volumes are created automatically by `podman play kube`.
+    # They persist across restarts; remove them with `podman volume rm` to
+    # force a clean re-init (see the README).
+    - name: pgdata
+      persistentVolumeClaim:
+        claimName: pgvector-pgdata
+    - name: mlflow-artifacts
+      persistentVolumeClaim:
+        claimName: mlflow-artifacts
