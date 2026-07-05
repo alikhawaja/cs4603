@@ -1,9 +1,9 @@
 """
-11a. Databricks Deployment Setup Script
+Databricks Deployment Setup Script
 
-Run this script in a Databricks notebook or from a terminal with
-the Databricks CLI configured. It creates all the prerequisites
-needed for the deployment notebook (11.deployment.ipynb):
+Run this script from a terminal with the Databricks CLI configured.
+It creates all the prerequisites needed for the deployment notebook
+(deployment.ipynb):
 
   1. MLflow experiment on Databricks
   2. Logs the LangGraph agent as an MLflow model
@@ -16,20 +16,21 @@ Prerequisites:
   - .env file with DATABRICKS_TOKEN, DATABRICKS_HOST, DATABRICKS_MODEL
 
 Usage (from repo root):
-    python wk5_langgraph/11a.deploy_setup.py
+    python wk5_langgraph/11.databricks_deployment/deploy_setup.py
 
     # Or with custom model name:
-    python wk5_langgraph/11a.deploy_setup.py --model-name my_agent
+    python wk5_langgraph/11.databricks_deployment/deploy_setup.py --model-name my_agent
 
     # Skip endpoint creation (just register model):
-    python wk5_langgraph/11a.deploy_setup.py --skip-endpoint
+    python wk5_langgraph/11.databricks_deployment/deploy_setup.py --skip-endpoint
 """
 
 import argparse
+import os
 import sys
 import time
 
-sys.path.insert(0, "..")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # ─── Parse arguments ─────────────────────────────────────────────────────────
 
@@ -61,65 +62,55 @@ try:
 except ImportError:
     HAS_SDK = False
 
-# ─── Step 1: Define the LangGraph agent ──────────────────────────────────────
+# ─── Step 1: Quick sanity check of the agent ─────────────────────────────────
 
 print(f"\n{'─'*60}")
-print(f"  Step 1: Define the LangGraph agent")
+print(f"  Step 1: Sanity-check the LangGraph agent")
 print(f"{'─'*60}")
 
 from langgraph.graph import StateGraph, MessagesState, START, END
-from langgraph.prebuilt import ToolNode
-from langchain_core.messages import HumanMessage
+from langgraph.prebuilt import ToolNode, tools_condition
+from langchain_core.messages import HumanMessage, SystemMessage
 
+# Import agent tools from agent.py so we don't duplicate definitions
+import importlib.util
+_spec = importlib.util.spec_from_file_location(
+    "agent_module",
+    os.path.join(os.path.dirname(__file__), "agent.py"),
+)
+_agent_mod = importlib.util.module_from_spec(_spec)
 
-def multiply(a: int, b: int) -> int:
-    """Multiply a and b.
+# Prevent agent.py from calling mlflow.models.set_model during import
+import mlflow as _mlflow_tmp
+_orig_set_model = _mlflow_tmp.models.set_model
+_mlflow_tmp.models.set_model = lambda *a, **kw: None
+_spec.loader.exec_module(_agent_mod)
+_mlflow_tmp.models.set_model = _orig_set_model
 
-    Args:
-        a: first int
-        b: second int
-    """
-    return a * b
+tools = _agent_mod.tools
+SYSTEM_PROMPT = _agent_mod.SYSTEM_PROMPT
 
-
-def add(a: int, b: int) -> int:
-    """Adds a and b.
-
-    Args:
-        a: first int
-        b: second int
-    """
-    return a + b
-
-
-tools = [multiply, add]
 llm_with_tools = llm_noreason.bind_tools(tools)
 
 
 def assistant(state: MessagesState):
-    return {"messages": [llm_with_tools.invoke(state["messages"])]}
-
-
-def route_tools(state: MessagesState):
-    last = state["messages"][-1]
-    if hasattr(last, "tool_calls") and last.tool_calls:
-        return "tools"
-    return END
+    messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+    return {"messages": [llm_with_tools.invoke(messages)]}
 
 
 builder = StateGraph(MessagesState)
 builder.add_node("assistant", assistant)
 builder.add_node("tools", ToolNode(tools))
 builder.add_edge(START, "assistant")
-builder.add_conditional_edges("assistant", route_tools, ["tools", END])
+builder.add_conditional_edges("assistant", tools_condition)
 builder.add_edge("tools", "assistant")
 
 graph = builder.compile()
 
 # Sanity check
-result = graph.invoke({"messages": [HumanMessage(content="Multiply 3 by 2.")]})
+result = graph.invoke({"messages": [HumanMessage(content="What is 5 power 3?")]})
 answer = result["messages"][-1].content
-print(f"  ✓ Agent compiled and tested (3×2 = {answer})")
+print(f"  ✓ Agent compiled and tested — 5^3 answer: {answer}")
 
 # ─── Step 2: Log to MLflow ───────────────────────────────────────────────────
 
@@ -155,7 +146,7 @@ print(f"  Experiment:      {experiment_path}")
 mlflow.set_experiment(experiment_path)
 
 # Write model code path for models-from-code logging
-model_code_path = os.path.join(os.path.dirname(__file__), "11a_agent_model.py")
+model_code_path = os.path.join(os.path.dirname(__file__), "agent.py")
 print(f"  Model code:      {model_code_path}")
 
 with mlflow.start_run(run_name="langgraph-agent-setup") as run:
