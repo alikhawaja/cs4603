@@ -14,6 +14,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.runnables import RunnableSequence
+from langchain_core.runnables import RunnableConfig
 from langchain_community.vectorstores import FAISS
 from langchain_postgres import PGVector
 from langchain_community.document_loaders import WebBaseLoader
@@ -36,6 +37,24 @@ import mlflow
 
 import warnings
 from pprintpp import pprint as pp
+
+# ── Type-check-only declarations ──────────────────────────────────────────────
+# These objects are created at runtime inside the `if __name__ == "__main__":`
+# block below and injected into a notebook's namespace by `%run langchain_common.py`.
+# Pylance can't see runtime-injected names, so we declare their types here (under
+# TYPE_CHECKING, i.e. never executed) so notebooks can do:
+#     if TYPE_CHECKING:
+#         from langchain_common import llm_noreason, databricks_embeddings, ...
+# and get correct types/autocomplete with no false "not defined" errors.
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    llm: ChatOpenAI
+    llm_noreason: ChatOpenAI
+    databricks_embeddings: OpenAIEmbeddings
+    pgvectordb_base: str
+    pgvectordb_conn: str
+
 
 def enable_logging():
     import logging
@@ -145,7 +164,7 @@ def get_agent_instance(llm):
 def new_conversation_id() -> str:
     return str(uuid.uuid4())
   
-def make_thread_config(user_id: str | None = None) -> dict:
+def make_thread_config(user_id: str | None = None) -> RunnableConfig:
     conversation_id = new_conversation_id()
     if user_id is None:
         thread_id = f"conv-{conversation_id}"
@@ -179,7 +198,9 @@ if __name__ == "__main__":
     except Exception:
         pass
 
+    db = "lc_vector_db"
     pgvectordb_base = "langchain:langchain!@localhost:5432"
-    pgvectordb_conn = f"postgresql+psycopg://{pgvectordb_base}/lc_vector_db"  
+    pgdb_conn = f"postgresql://{pgvectordb_base}/{db}"
+    pgvectordb_conn = f"postgresql+psycopg://{pgvectordb_base}/{db}"
 
     DATABRICKS_TOKEN, DATABRICKS_HOST, DATABRICKS_MODEL, (llm, llm_noreason), databricks_embeddings = bootstrap_notebook()
