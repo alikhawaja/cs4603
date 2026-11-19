@@ -49,6 +49,9 @@ This week introduces model endpoints, tokenization, prompting, chat-completion A
 15. **How can MLflow trace a chat-completion call and record its usage?**  
     Decorate the request function with `@mlflow.trace`, then log run parameters, token metrics, prompt and response text, and trace identifiers.
 
+16. **How do you implement chain-of-thought prompting for a task like sentiment classification?**  
+    Instruct the model to reason step by step before answering (e.g., "First identify the key words, then judge the overall tone"), then require a labeled final line such as `Final Sentiment: positive` that the application parses.
+
 ## Conceptual Questions
 
 1. **What is a token?**  
@@ -95,6 +98,17 @@ This week introduces model endpoints, tokenization, prompting, chat-completion A
 
 15. **What are MLflow traces and spans useful for?**  
     A trace records a full operation and spans capture its component steps; together with logged inputs, outputs, and metrics they help inspect behavior and diagnose failures.
+
+16. **What is chain-of-thought prompting, and when does it help?**  
+    It asks the model to generate intermediate reasoning steps before the final answer. This improves multi-step judgments and reasoning tasks, but costs extra tokens and latency, so the reasoning should be validated or trimmed where possible.
+
+    ```mermaid
+    flowchart LR
+        U[User prompt] --> LLM[LLM]
+        LLM --> R[Step-by-step reasoning]
+        R --> A[Labeled final answer]
+        A --> App[Application parses final line]
+    ```
 
 ## Function-Calling Flow
 
