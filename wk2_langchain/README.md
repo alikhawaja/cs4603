@@ -18,9 +18,10 @@ Supporting files: `langchain_common_notebook.py` (shared setup via `%run`), `llm
 ## Prerequisites
 
 - Week 1 setup (`.env` with `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_MODEL`).
+- `PGVECTOR_DSN` optionally overrides the local PGVector connection string used by notebooks 4 and 6.
 - Packages: `langchain-openai`, `langchain-community`, `langchain-postgres`, `langchain-classic`, `langchain-text-splitters`, `faiss-cpu`, `psycopg`, `pandas`, `pprintpp`.
 - A PGVector database (notebooks 4 and 6); see `../pgvector-mlflow-setup`.
-- `USER_AGENT` environment variable for web loading in notebook 5.
+- Notebook 5 uses a browser-like default `User-Agent`; set `USER_AGENT` to override it.
 
 ## Study Material
 

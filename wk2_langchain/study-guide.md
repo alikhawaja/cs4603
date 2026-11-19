@@ -49,6 +49,33 @@ This week covers LangChain model calls, prompt templates, Runnable/LCEL composit
 15. **How do the record-manager cleanup modes differ?**  
     No cleanup leaves stale records, incremental cleanup removes stale records for sources updated in the run, and full cleanup removes records not present in the complete indexing input.
 
+16. **How does `ChatPromptTemplate` represent a conversation?**<br>
+    It combines messages with roles such as `system` and `human`, with placeholders filled when the template is formatted or invoked.
+
+17. **Can an invocation change a value fixed with `.partial()`?**<br>
+    No. The partial value is fixed for that template's invocations; calling `.partial()` again creates a new template and can replace the earlier value.
+
+18. **How can a Python function or custom class participate in an LCEL chain?**<br>
+    Wrap a function with `RunnableLambda`, or implement the `Runnable` interface, then compose it with other Runnables.
+
+19. **What does PGVector's `similarity_search_with_score` return?**<br>
+    It returns documents with distance values; lower distances mean closer vectors, so the values should not be read as similarity scores where higher is better.
+
+20. **How do `PGVector.from_texts` and `PGVector.from_documents` differ?**<br>
+    The first accepts text strings (and optional metadata); the second accepts `Document` objects with content and metadata. Both embed and store the inputs.
+
+21. **What information does a LangChain `Document` carry?**<br>
+    It contains `page_content` and metadata such as a source URL or page number, which can be retained on split chunks.
+
+22. **Why configure chunk size and overlap when splitting documents?**<br>
+    Chunk size bounds each retrieval unit, while overlap preserves context across adjacent chunk boundaries.
+
+23. **What is the difference between a record-manager namespace and a vector-store collection?**<br>
+    The namespace scopes tracked document IDs in the record manager; the collection stores vectors. `source_id_key` groups documents so cleanup can target updated sources.
+
+24. **What are the end-to-end stages of the RAG notebook?**<br>
+    Load documents, split them, embed and index chunks, retrieve context for a question, format the prompt, call the model, and return the answer.
+
 16. **How do you stop a reasoning model from returning its reasoning in the output?**  
    Create a separate `ChatOpenAI` client with `reasoning_effort="none"` so `.content` contains only the text answer.
 
@@ -110,6 +137,15 @@ This week covers LangChain model calls, prompt templates, Runnable/LCEL composit
 
 15. **What tradeoff should be considered when choosing full versus incremental cleanup?**  
     Full cleanup assumes the run represents the whole corpus; incremental cleanup is safer for partial source updates but requires reliable source grouping.
+
+16. **Why must the direction of a vector-store distance be understood?**<br>
+    A distance is smaller for closer vectors; treating it as a higher-is-better similarity score reverses the meaning of retrieval results.
+
+17. **Why can the record-manager demonstrations affect one another when run in sequence?**<br>
+    They reuse one collection and namespace, so record state accumulates; independent comparisons require a clean database or isolated stores.
+
+18. **Why might a RAG application keep source metadata on retrieved chunks?**<br>
+    Metadata preserves provenance and can support filtering, source display, and attribution alongside the generated answer.
 
 16. **Why might a model return reasoning text mixed with its answer, and why does it matter for chains?**  
    Reasoning models can emit extra reasoning content; parsers and downstream steps expect clean text, so reasoning is disabled or filtered.

@@ -116,5 +116,8 @@ if __name__ == "__main__":
     except Exception:
         pass
 
-    pgvectordb_conn = "postgresql+psycopg://langchain:langchain!@localhost:5432/cs4603_vectordb"
+    pgvectordb_conn = os.environ.get(
+        "PGVECTOR_DSN",
+        "postgresql+psycopg://langchain:langchain!@localhost:5432/cs4603_vectordb",
+    )
     DATABRICKS_TOKEN, DATABRICKS_HOST, DATABRICKS_MODEL, (llm, llm_noreason), databricks_embeddings = bootstrap_notebook()

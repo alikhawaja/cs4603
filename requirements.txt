@@ -3,6 +3,7 @@ python-dotenv
 langchain
 langchain-openai
 langchain-community
+langchain-classic
 langgraph
 databricks-langchain
 databricks-ai-search
