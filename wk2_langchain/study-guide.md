@@ -49,6 +49,21 @@ This week covers LangChain model calls, prompt templates, Runnable/LCEL composit
 15. **How do the record-manager cleanup modes differ?**  
     No cleanup leaves stale records, incremental cleanup removes stale records for sources updated in the run, and full cleanup removes records not present in the complete indexing input.
 
+16. **How do you stop a reasoning model from returning its reasoning in the output?**  
+   Create a separate `ChatOpenAI` client with `reasoning_effort="none"` so `.content` contains only the text answer.
+
+17. **How do you build a custom Runnable?**  
+   Subclass `Runnable` and implement `invoke(self, input)`; `RunnablePassthrough` returns its input unchanged and `RunnableSequence(a, b, c)` is equivalent to `a | b | c`.
+
+18. **How do you inspect scores and add data to an existing PGVector collection?**  
+   Use `similarity_search_with_score(query, k=n)` for (document, score) pairs and `add_documents(docs, ids=[...])` to embed and append documents.
+
+19. **How do you load web pages and split them by token count?**  
+   Use `WebBaseLoader(url).load()` and `RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=..., chunk_overlap=...)`.
+
+20. **How do you set the number of results for a FAISS retriever?**  
+   Pass `search_kwargs`: `vectorstore.as_retriever(search_kwargs={"k": 4})`.
+
 ## Conceptual Questions
 
 1. **What does LangChain add around a model API?**  
@@ -95,6 +110,27 @@ This week covers LangChain model calls, prompt templates, Runnable/LCEL composit
 
 15. **What tradeoff should be considered when choosing full versus incremental cleanup?**  
     Full cleanup assumes the run represents the whole corpus; incremental cleanup is safer for partial source updates but requires reliable source grouping.
+
+16. **Why might a model return reasoning text mixed with its answer, and why does it matter for chains?**  
+   Reasoning models can emit extra reasoning content; parsers and downstream steps expect clean text, so reasoning is disabled or filtered.
+
+17. **How do `PromptTemplate.partial` values behave?**  
+   Partial values are fixed in the new template, so later invocations supply only the remaining variables.
+
+18. **Why is `RunnablePassthrough.assign` useful before a prompt?**  
+   It keeps the original input (such as the question) while adding derived fields (such as a detected city) that the prompt needs.
+
+19. **How do `from_texts` and `from_documents` differ?**  
+   `from_texts` indexes raw strings; `from_documents` indexes `Document` objects and keeps their metadata.
+
+20. **When would you choose FAISS over PGVector?**  
+   FAISS is a lightweight in-memory index suited to quick experiments; PGVector is a persistent database store that supports metadata and shared, updatable collections.
+
+21. **Why does retrieval quality depend on chunk size?**  
+   Chunks that are too large dilute relevance and consume prompt space; too small lose context, so size and overlap are tuned together.
+
+22. **Why instruct the model to say "I don't know" in a RAG prompt?**  
+   It limits answers to the retrieved context and reduces hallucination when retrieval finds nothing relevant.
 
 ## LangChain RAG Flow
 
